@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  crims_app:
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crims_app
+    restart: always
+    volumes: 
+      - .:/app
+    ports:
+      - 8080:8080
+    depends_on:
+      - crims_db
+    networks:
+      - crimsnetwork
+  
+  crims_db:
+    image: postgres:16
+    container_name: crims_db
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: crims
+    ports:
+      - 5432:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - crimsnetwork
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  crimsnetwork:
+    driver: bridge
