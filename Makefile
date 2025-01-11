@@ -7,3 +7,6 @@ migrate:
 
 seed-customers:
 	go run main.go seed CustomerSeeder
+
+seed-cloud-resources:
+	go run main.go seed CloudResourceSeeder
