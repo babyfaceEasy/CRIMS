@@ -25,3 +25,16 @@ func (repo Repository) IsEmailTaken(email string) (bool, error) {
 	}
 	return true, nil
 }
+
+func (repo Repository) GetCustomer(tx *gorm.DB, query interface{}, args ...interface{}) (*models.Customer, error) {
+	if tx == nil {
+		tx = repo.DB
+	}
+	cust := models.Customer{}
+	err := tx.Model(models.Customer{}).Preload("CloudResources").Where(query, args...).First(&cust).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &cust, nil
+}

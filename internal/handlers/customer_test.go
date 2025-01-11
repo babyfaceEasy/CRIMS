@@ -99,3 +99,8 @@ func (m *MockService) IsEmailTaken(email string) (bool, error) {
 	args := m.Called(email)
 	return args.Bool(0), args.Error(1)
 }
+
+func (m *MockService) GetCustomerByUID(customerUID string) (bool, error) {
+	args := m.Called(customerUID)
+	return args.Bool(0), args.Error(1)
+}

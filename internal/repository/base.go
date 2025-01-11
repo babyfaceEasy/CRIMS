@@ -18,8 +18,12 @@ func NewRepository(db *gorm.DB) *Repository {
 type RepositoryInterface interface {
 	SaveCustomer(name, email string) error
 	IsEmailTaken(email string) (bool, error)
+	GetCustomer(tx *gorm.DB, query interface{}, args ...interface{}) (*models.Customer, error)
 	DoesCloudResourceExist(resource string) (bool, error)
-	GetCloudResourcesByCustomerID(customerID uint) ([]models.CloudResource, error)
-	UpdateCloudResource(resource models.CloudResource, cloudResourceID uint) error
-	DeleteCloudResource(cloudResourceID uint) error
+	AttachCloudResourcesByNames(db *gorm.DB, customerID uint, resourceNames []string) error
+	// GetCloudResourcesByCustomerID(customerID uint) ([]models.CloudResource, error)
+	UpdateCloudResource(tx *gorm.DB, resource models.CloudResource, cloudResourceID uint) error
+	DeleteCloudResource(tx *gorm.DB, resourceID uint) error
+	GetCloudResource(tx *gorm.DB, query interface{}, args ...interface{}) (*models.CloudResource, error)
+	GetCloudResources(tx *gorm.DB, query interface{}, args ...interface{}) ([]models.CloudResource, error)
 }

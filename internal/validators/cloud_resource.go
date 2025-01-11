@@ -1,6 +1,11 @@
 package validators
 
-type AddResourcesInput struct {
-	CustomerID uint     `json:"customer_id" binding:"required"`
-	Resources  []string `json:"resources" binding:"required"`
+type AddCloudResourcesInput struct {
+	Resources []string `json:"resources" binding:"required"`
+}
+
+type UpdateCloudResourceInput struct {
+	Name   string `json:"name" binding:"required"`
+	Type   string `json:"type" binding:"required"`
+	Region string `json:"region" binding:"required" `
 }
