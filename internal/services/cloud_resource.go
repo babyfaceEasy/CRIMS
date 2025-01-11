@@ -1,7 +1,10 @@
 package services
 
 import (
+	"errors"
+
 	"github.com/babyfaceeasy/crims/internal/models"
+	"gorm.io/gorm"
 )
 
 func (svc Service) DoesCloudResourceExist(resource string) (bool, error) {
@@ -24,12 +27,27 @@ func (svc Service) GetCloudResourceByUID(cloudResourceUID string) (models.CloudR
 	return *cr, nil
 }
 
-func (svc Service) UpdateCloudResource(resource models.CloudResource, cloudResourceID uint) error {
-	cr, err := svc.repo.GetCloudResource(nil, "id = ?", cloudResourceID)
+func (svc Service) GetCloudResourceByName(cloudResourceName string) (*models.CloudResource, error) {
+	cr, err := svc.repo.GetCloudResource(nil, "name = ?", cloudResourceName)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return svc.repo.UpdateCloudResource(nil, *cr, cloudResourceID)
+	return cr, nil
+}
+
+func (svc Service) IsCloudResourceNameAvailable(cloudResourceName string) (bool, error) {
+	cr, err := svc.repo.GetCloudResource(nil, "name = ?", cloudResourceName)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return true, nil
+		}
+		return false, err
+	}
+	return cr.Name == cloudResourceName, nil
+}
+
+func (svc Service) UpdateCloudResource(resource models.CloudResource, cloudResourceID uint) error {
+	return svc.repo.UpdateCloudResource(nil, resource, cloudResourceID)
 }
 
 func (svc Service) DeleteCloudResource(cloudResourceID uint) error {

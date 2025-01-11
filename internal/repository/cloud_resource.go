@@ -77,7 +77,7 @@ func (repo Repository) UpdateCloudResource(tx *gorm.DB, cloudResource models.Clo
 		tx = repo.DB
 	}
 
-	return tx.Where("id = ?", cloudResource.ID).Updates(&cloudResource).Error
+	return tx.Where("id = ?", cloudResourceID).Updates(&cloudResource).Error
 }
 
 func (repo Repository) DeleteCloudResourceOLD(tx *gorm.DB, cloudResource models.CloudResource) error {
@@ -119,6 +119,9 @@ func (repo Repository) GetCloudResource(tx *gorm.DB, query interface{}, args ...
 	cr := models.CloudResource{}
 	err := tx.Model(models.CloudResource{}).Preload("Customers").Where(query, args...).First(&cr).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("cloud resource not found: %w", err)
+		}
 		return nil, err
 	}
 

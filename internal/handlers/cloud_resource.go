@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 
 	"github.com/babyfaceeasy/crims/internal/messages"
 	"github.com/babyfaceeasy/crims/internal/validators"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func (h Handler) AddCloudResourcesToCustomer(ctx *gin.Context) {
@@ -78,10 +80,10 @@ func (h Handler) FetchCloudResourcesForCustomer(ctx *gin.Context) {
 func (h Handler) UpdateCloudResource(ctx *gin.Context) {
 	R := ResponseFormat{}
 
-	cloudResourceUID := ctx.Param("id")
-	if len(cloudResourceUID) == 0 {
-		R.Error = append(R.Error, "id is required")
-		R.Message = messages.ValidationFailed
+	// get cloud resource uid
+	id := ctx.Param("id")
+	if id == "" {
+		R.Message = "cloud resource id is required"
 		ctx.JSON(h.Response(http.StatusBadRequest, R))
 		return
 	}
@@ -94,20 +96,36 @@ func (h Handler) UpdateCloudResource(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: check to see if the name is available
-
-	cloudResource, err := h.svc.GetCloudResourceByUID(cloudResourceUID)
+	cloudResource, err := h.svc.GetCloudResourceByUID(id)
 	if err != nil {
 		log.Println(err)
-		R.Message = messages.ValidationFailed
-		ctx.JSON(h.Response(http.StatusBadRequest, R))
+		R.Message = messages.SomethingWentWrong
+		ctx.JSON(h.Response(http.StatusInternalServerError, R))
 		return
 	}
 
+	// check if a change is been made to the name and confirm if the name is available
+	if cloudResource.Name != i.Name {
+		// check to see if the new name is available
+		available, err := h.svc.IsCloudResourceNameAvailable(i.Name)
+		if err != nil {
+			log.Println(err)
+			R.Message = messages.SomethingWentWrong
+			ctx.JSON(h.Response(http.StatusInternalServerError, R))
+			return
+		}
+
+		if !available {
+			R.Message = messages.CloudResourceNameAlreadyInUse
+			ctx.JSON(h.Response(http.StatusBadRequest, R))
+			return
+		}
+	}
+
+	// update the cloud resource
 	cloudResource.Name = i.Name
 	cloudResource.Type = i.Type
 	cloudResource.Region = i.Region
-
 	if err := h.svc.UpdateCloudResource(cloudResource, cloudResource.ID); err != nil {
 		log.Println(err)
 		R.Message = messages.SomethingWentWrong
@@ -115,22 +133,42 @@ func (h Handler) UpdateCloudResource(ctx *gin.Context) {
 		return
 	}
 
-	cloudResource, err = h.svc.GetCloudResourceByUID(cloudResourceUID)
-	if err != nil {
-		log.Println(err)
-		R.Message = messages.ValidationFailed
-		ctx.JSON(h.Response(http.StatusBadRequest, R))
-		return
-	}
-
 	R.Data = cloudResource
-	R.Message = "update cloud resources"
+	R.Message = "cloud resource update was successful"
 	ctx.JSON(h.Response(http.StatusOK, R))
 }
 
 func (h Handler) DeleteCloudResource(ctx *gin.Context) {
 	R := ResponseFormat{}
 
-	R.Message = "delete cloud resources"
+	id := ctx.Param("id")
+	if id == "" {
+		R.Message = "cloud resource id is required"
+		ctx.JSON(h.Response(http.StatusBadRequest, R))
+		return
+	}
+
+	cloudResource, err := h.svc.GetCloudResourceByUID(id)
+	if err != nil {
+		// TODO: create your own errors here to make it more solid
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			R.Message = messages.CloudResourceNotFound
+			ctx.JSON(h.Response(http.StatusNotFound, R))
+			return
+		}
+		log.Println(err)
+		R.Message = messages.SomethingWentWrong
+		ctx.JSON(h.Response(http.StatusInternalServerError, R))
+		return
+	}
+
+	if err := h.svc.DeleteCloudResource(cloudResource.ID); err != nil {
+		log.Println(err)
+		R.Message = messages.SomethingWentWrong
+		ctx.JSON(h.Response(http.StatusInternalServerError, R))
+		return
+	}
+
+	R.Message = "cloud resource deleted successfully"
 	ctx.JSON(h.Response(http.StatusOK, R))
 }
