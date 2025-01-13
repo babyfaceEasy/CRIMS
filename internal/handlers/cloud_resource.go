@@ -33,16 +33,15 @@ func (h Handler) AddCloudResourcesToCustomer(ctx *gin.Context) {
 	customer, err := h.svc.GetCustomerByUID(customer_uid)
 	if err != nil {
 		log.Printf("error fetching customer: %v", err)
-		R.Error = append(R.Error, err.Error())
-		R.Message = messages.ValidationFailed
+		R.Message = messages.NotFound
 		ctx.JSON(h.Response(http.StatusBadRequest, R))
 		return
 	}
 
 	err = h.svc.AddCloudResourcesToCustomer(customer.ID, i.Resources)
 	if err != nil {
-		R.Error = append(R.Error, err.Error())
-		R.Message = messages.ValidationFailed
+		log.Println(err)
+		R.Message = messages.SomethingWentWrong
 		ctx.JSON(h.Response(http.StatusBadRequest, R))
 		return
 	}
@@ -63,7 +62,7 @@ func (h Handler) FetchCloudResourcesForCustomer(ctx *gin.Context) {
 	}
 
 	customer, err := h.svc.GetCustomerByUID(customer_uid)
-	if err != nil {
+	if err != nil ||  customer == nil{
 		log.Printf("error fetching customer: %v", err)
 		R.Error = append(R.Error, err.Error())
 		R.Message = messages.ValidationFailed

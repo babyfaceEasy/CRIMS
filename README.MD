@@ -41,3 +41,5 @@ Request Body Sample
     "region" : "us-central1"  
 }
 ```
+8. You can use the command `make run-tests` to run the tests for this service.
+*NB you have to be in the root directory and have make installed to run the tests*

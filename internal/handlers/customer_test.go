@@ -2,18 +2,16 @@ package handlers
 
 import (
 	"bytes"
-	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/babyfaceeasy/crims/internal/validators"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
-func TestGetCustomersHandler(t *testing.T) {
+func TestGetCustomerHandler(t *testing.T) {
 	svc := new(MockService)
 	handler := NewHandler(svc)
 
@@ -35,72 +33,81 @@ func TestGetCustomersHandler(t *testing.T) {
 
 func TestCreateCustomerHandler(t *testing.T) {
 	mockSvc := new(MockService)
-	mockSvc.On("IsEmailTaken", "john@example.com").Return(false, nil).Once()
-	mockSvc.On("AddCustomer", "John Doe", "john@example.com").Return(nil).Once()
 	handler := NewHandler(mockSvc)
 
-	t.Run("should correctly create the customer", func(t *testing.T) {
-		payload := validators.CreateCustomerInput{
-			Name:  "John Doe",
-			Email: "john@example.com",
-		}
+	gin.SetMode(gin.TestMode)
+	router := gin.Default()
+	router.POST("/v1/customers", handler.CreateCustomer)
 
-		marshalled, _ := json.Marshal(payload)
-		req, err := http.NewRequest(http.MethodPost, "/v1/customers", bytes.NewBuffer(marshalled))
-		if err != nil {
-			t.Fatal(err)
-		}
+	t.Run("should return bad request for invalid payload", func(t *testing.T) {
+		// Invalid JSON payload
+		payload := `{"name": "John Doe", "email": "invalid-email"}`
+		req, _ := http.NewRequest(http.MethodPost, "/v1/customers", bytes.NewBufferString(payload))
+		req.Header.Set("Content-Type", "application/json")
 
 		rr := httptest.NewRecorder()
-		gin.SetMode(gin.TestMode)
-		router := gin.Default()
-		router.POST("/v1/customers", handler.CreateCustomer)
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("should return internal server error if checking email fails", func(t *testing.T) {
+		payload := `{"name": "John Doe", "email": "john@example.com"}`
+		mockSvc.On("IsEmailTaken", "john@example.com").Return(false, errors.New("database error")).Once()
+
+		req, _ := http.NewRequest(http.MethodPost, "/v1/customers", bytes.NewBufferString(payload))
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusInternalServerError, rr.Code)
+		mockSvc.AssertCalled(t, "IsEmailTaken", "john@example.com")
+	})
+
+	t.Run("should return unprocessable entity if email is already taken", func(t *testing.T) {
+		payload := `{"name": "John Doe", "email": "john@example.com"}`
+		mockSvc.On("IsEmailTaken", "john@example.com").Return(true, nil).Once()
+
+		req, _ := http.NewRequest(http.MethodPost, "/v1/customers", bytes.NewBufferString(payload))
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusUnprocessableEntity, rr.Code)
+		mockSvc.AssertCalled(t, "IsEmailTaken", "john@example.com")
+	})
+
+	t.Run("should return internal server error if adding customer fails", func(t *testing.T) {
+		payload := `{"name": "John Doe", "email": "john@example.com"}`
+		mockSvc.On("IsEmailTaken", "john@example.com").Return(false, nil).Once()
+		mockSvc.On("AddCustomer", "John Doe", "john@example.com").Return(errors.New("failed to insert customer")).Once()
+
+		req, _ := http.NewRequest(http.MethodPost, "/v1/customers", bytes.NewBufferString(payload))
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusInternalServerError, rr.Code)
+		mockSvc.AssertCalled(t, "IsEmailTaken", "john@example.com")
+		mockSvc.AssertCalled(t, "AddCustomer", "John Doe", "john@example.com")
+	})
+
+	t.Run("should create customer successfully", func(t *testing.T) {
+		payload := `{"name": "John Doe", "email": "john@example.com"}`
+		mockSvc.On("IsEmailTaken", "john@example.com").Return(false, nil).Once()
+		mockSvc.On("AddCustomer", "John Doe", "john@example.com").Return(nil).Once()
+
+		req, _ := http.NewRequest(http.MethodPost, "/v1/customers", bytes.NewBufferString(payload))
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
 		router.ServeHTTP(rr, req)
 
 		assert.Equal(t, http.StatusCreated, rr.Code)
+		mockSvc.AssertCalled(t, "IsEmailTaken", "john@example.com")
+		mockSvc.AssertCalled(t, "AddCustomer", "John Doe", "john@example.com")
 	})
-
-	t.Run("should fail if the user payload is invalid", func(t *testing.T) {
-		payload := validators.CreateCustomerInput{
-			Name:  "John Doe",
-			Email: "johnexample.com",
-		}
-		marshalled, _ := json.Marshal(payload)
-		req, err := http.NewRequest(http.MethodPost, "/register", bytes.NewBuffer(marshalled))
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		rr := httptest.NewRecorder()
-		gin.SetMode(gin.TestMode)
-		router := gin.Default()
-		router.POST("/v1/customers", handler.CreateCustomer)
-		router.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusBadRequest {
-			t.Errorf("expected status code %d got %d", http.StatusBadRequest, rr.Code)
-		}
-	})
-}
-
-// MockService is a mock implementation of ServiceInterface
-type MockService struct {
-	mock.Mock
-}
-
-// AddCustomer mocks the AddCustomer method
-func (m *MockService) AddCustomer(name, email string) error {
-	args := m.Called(name, email)
-	return args.Error(0)
-}
-
-// IsEmailTaken mocks the IsEmailTaken method
-func (m *MockService) IsEmailTaken(email string) (bool, error) {
-	args := m.Called(email)
-	return args.Bool(0), args.Error(1)
-}
-
-func (m *MockService) GetCustomerByUID(customerUID string) (bool, error) {
-	args := m.Called(customerUID)
-	return args.Bool(0), args.Error(1)
 }

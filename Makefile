@@ -1,3 +1,6 @@
+run-tests:
+	go test -v - race ./...
+
 # Usage: make create-migrate name=create_users_table
 create-migrate:
 	goose -dir ./internal/db/migrations create ${name} sql

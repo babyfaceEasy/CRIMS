@@ -8,7 +8,7 @@ type CloudResource struct {
 	Name      string      `gorm:"unique;not null"`
 	Type      string      `gorm:"not null"`
 	Region    string      `gorm:"not null"`
-	Customers  []*Customer `gorm:"many2many:customer_cloud_resources;" json:"-"`
+	Customers []*Customer `gorm:"many2many:customer_cloud_resources;" json:"-"`
 	CreatedAt time.Time   `json:"-"`
 	UpdatedAt time.Time   `json:"-"`
 }
