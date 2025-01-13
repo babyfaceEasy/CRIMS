@@ -14,7 +14,7 @@ func HandleArgs() {
 	if len(args) >= 1 {
 		switch args[0] {
 		case "seed":
-			loadEnv()
+			LoadEnv()
 			seeds.Execute(args[1:]...)
 			os.Exit(0)
 		}

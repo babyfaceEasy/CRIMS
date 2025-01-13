@@ -15,7 +15,7 @@ var engine *gin.Engine
 
 // Initialize setup the server with the needed details
 func Initialize() error {
-	if err := loadEnv(); err != nil {
+	if err := LoadEnv(); err != nil {
 		return err
 	}
 
@@ -41,7 +41,7 @@ func Initialize() error {
 	return nil
 }
 
-func loadEnv() error {
+func LoadEnv() error {
 	return godotenv.Load(".env")
 }
 

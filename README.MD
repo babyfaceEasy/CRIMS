@@ -2,8 +2,8 @@
 This service takes its messages from RabbitMQ and logs them to the console.
 
 ## Steps 
-1. Do a docker compose build to build the docker images
-2. Do a docker compose up to run it
+1. Do a `docker compose build` to build the docker images
+2. Do a `docker compose up` to run it
 3. You can seed the customers by calling the command `make seed-customers`. *NB: You have to have make installed or just* **run go run main.go seed CustomerSeeder** *straight*
 4. You can seed the customers by calling the command `make eed-cloud-resources`. *NB: You have to have make installed or just* **go run main.go seed CloudResourceSeeder** *straight*
 5. Make a POST call to teh following endpoint http://localhost:8080/v1/customers/:id/cloud-resources to attach resources to a customer.
